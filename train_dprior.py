@@ -1,3 +1,10 @@
+# This is a first cut - training on a single GPU. 
+# 1. Drop this file in the DALLE2-pytorch-main/dalle2_pytorch/ directory - I've changed the import paths to refer to local directory. 
+# 2. Loss - In the LucidRains code - he defaults to "l1" - I've let it be as is. 
+# 3. As mentioned in Section 2.2 of the paper - they're better off training on a L2 loss - but the code takes "l1" - I've let it be for now. 
+# 4. Line 49 was changed for testing purposes, to see if the forward() of the DiffusionPrior was getting called ok, looks good. 
+# Change it to line 50, for the full run, with the entire embeddings set. 
+
 from dalle2_pytorch import DiffusionPrior
 from embedding_reader import EmbeddingReader
 from dalle2_pytorch import DiffusionPriorNetwork
@@ -19,16 +26,14 @@ from einops_exts.torch import EinopsToAndFrom
 
 from kornia.filters import gaussian_blur2d
 
-from tokenizer import tokenizer
+from tokenizer import tokenizer # all point to local directory here. 
 from vqgan_vae import NullVQGanVAE, VQGanVAE
 from attention import QueryAttnUpsample
 
-# DiffusionPriorNetwork 
+# DiffusionPriorNetwork - need to check the dim part here. 
 prior_network = DiffusionPriorNetwork( dim = 512, depth = 6, dim_head = 64, heads = 8).cuda()
-#).cuda()
 # DiffusionPrior with text embeddings and image embeddings pre-computed
 diffusion_prior = DiffusionPrior( net = prior_network, clip = None, image_embed_dim = 768, timesteps = 100, cond_drop_prob = 0.2, condition_on_text_encodings = False  ).cuda()
-#).cuda()
 # Get image and text embeddings from the servers
 ei = EmbeddingReader(embeddings_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/img_emb/", file_format="npy")
 et = EmbeddingReader(embeddings_folder="s3://laion-us-east-1/embeddings/vit-l-14/laion2B-en/text_emb/", file_format="npy")
@@ -40,6 +45,7 @@ min_valid_loss = np.inf
 for e in range(epochs):
     train_loss = 0.0
     print("Training loop - epoch number ",e)
+    # for testing purposes
     for embi,embt in zip(ei(batch_size=10 ** 3, start=0, end=10000),et(batch_size=10 ** 3, start=0, end=10000)):
 #    for embi,embt in zip(ei(batch_size=10 ** 3, start=0, end=ei.count),et(batch_size=10 ** 3, start=0, end=et.count)):
         embi = list(embi)
