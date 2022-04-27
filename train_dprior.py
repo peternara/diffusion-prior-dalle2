@@ -30,8 +30,8 @@ from tokenizer import tokenizer # all point to local directory here.
 from vqgan_vae import NullVQGanVAE, VQGanVAE
 from attention import QueryAttnUpsample
 
-# DiffusionPriorNetwork - need to check the dim part here. 
-prior_network = DiffusionPriorNetwork( dim = 512, depth = 6, dim_head = 64, heads = 8).cuda()
+# DiffusionPriorNetwork - dim needs to be 768, same as image_embed_dim
+prior_network = DiffusionPriorNetwork( dim = 768, depth = 6, dim_head = 64, heads = 8).cuda()
 # DiffusionPrior with text embeddings and image embeddings pre-computed
 diffusion_prior = DiffusionPrior( net = prior_network, clip = None, image_embed_dim = 768, timesteps = 100, cond_drop_prob = 0.2, condition_on_text_encodings = False  ).cuda()
 # Get image and text embeddings from the servers
