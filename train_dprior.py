@@ -74,7 +74,8 @@ for e in range(epochs):
         print("Validation loss = ",loss.item())
         valid_loss+=loss.item()
         
-        print(f'Epoch {e+1} \t\t Training Loss: { train_loss / len(trainloader)} \t\t Validation Loss: { valid_loss / len(validloader)}')
+        # this needs to be checked - the denominators - commenting for now
+        # print(f'Epoch {e+1} \t\t Training Loss: { train_loss / 0.8*embi.count} \t\t Validation Loss: { valid_loss / 0.2*embi.count}')
 
     if min_valid_loss > valid_loss:
         print(f'Validation Loss Decreased({min_valid_loss:.6f\
