@@ -34,7 +34,7 @@ from attention import QueryAttnUpsample
 prior_network = DiffusionPriorNetwork( dim = 768, depth = 6, dim_head = 64, heads = 8).cuda()
 # DiffusionPrior with text embeddings and image embeddings pre-computed
 diffusion_prior = DiffusionPrior( net = prior_network, clip = None, image_embed_dim = 768, timesteps = 100, cond_drop_prob = 0.2, condition_on_text_encodings = False  ).cuda()
-# Get image and text embeddings from the servers
+# Get image and text embeddings from the servers - these will be parametrized as inputs to the script
 ei = EmbeddingReader(embeddings_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/img_emb/", file_format="npy")
 et = EmbeddingReader(embeddings_folder="s3://laion-us-east-1/embeddings/vit-l-14/laion2B-en/text_emb/", file_format="npy")
 
@@ -47,7 +47,7 @@ for e in range(epochs):
     print("Training loop - epoch number ",e)
     # for testing purposes
     for embi,embt in zip(ei(batch_size=10 ** 3, start=0, end=10000),et(batch_size=10 ** 3, start=0, end=10000)):
-#    for embi,embt in zip(ei(batch_size=10 ** 3, start=0, end=ei.count),et(batch_size=10 ** 3, start=0, end=et.count)):
+#    for embi,embt in zip(ei(batch_size=10 ** 6, start=0, end=ei.count),et(batch_size=10 ** 6, start=0, end=et.count)):
         embi = list(embi)
         embt = list(embt)
         print(embi[0].shape,embt[0].shape)
