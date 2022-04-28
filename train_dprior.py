@@ -1,10 +1,4 @@
-# This is a first cut - training on a single GPU. 
-# 1. Drop this file in the DALLE2-pytorch-main/dalle2_pytorch/ directory - I've changed the import paths to refer to local directory. 
-# 2. Loss - In the LucidRains code - he defaults to "l1" - I've let it be as is. 
-# 3. As mentioned in Section 2.2 of the paper - they're better off training on a L2 loss - but the code takes "l1" - I've let it be for now. 
-# 4. Line 49 was changed for testing purposes, to see if the forward() of the DiffusionPrior was getting called ok, looks good. 
-# Change it to line 50, for the full run, with the entire embeddings set. 
-
+import argparse
 from dalle2_pytorch import DiffusionPrior
 from embedding_reader import EmbeddingReader
 from dalle2_pytorch import DiffusionPriorNetwork
@@ -26,63 +20,104 @@ from einops_exts.torch import EinopsToAndFrom
 
 from kornia.filters import gaussian_blur2d
 
-from tokenizer import tokenizer # all point to local directory here. 
+from tokenizer import tokenizer
 from vqgan_vae import NullVQGanVAE, VQGanVAE
 from attention import QueryAttnUpsample
+import wandb
 
-# DiffusionPriorNetwork - dim needs to be 768, same as image_embed_dim
-prior_network = DiffusionPriorNetwork( dim = 768, depth = 6, dim_head = 64, heads = 8).cuda()
-# DiffusionPrior with text embeddings and image embeddings pre-computed
-diffusion_prior = DiffusionPrior( net = prior_network, clip = None, image_embed_dim = 768, timesteps = 100, cond_drop_prob = 0.2, condition_on_text_encodings = False  ).cuda()
-# Get image and text embeddings from the servers - these will be parametrized as inputs to the script
-ei = EmbeddingReader(embeddings_folder="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/img_emb/", file_format="npy")
-et = EmbeddingReader(embeddings_folder="s3://laion-us-east-1/embeddings/vit-l-14/laion2B-en/text_emb/", file_format="npy")
 
-### Training code
-optimizer = torch.optim.SGD(diffusion_prior.parameters(), lr = 0.01)
-epochs = 5
-min_valid_loss = np.inf
-for e in range(epochs):
-    train_loss = 0.0
-    print("Training loop - epoch number ",e)
-    # for testing purposes
-    for embi,embt in zip(ei(batch_size=10 ** 3, start=0, end=10000),et(batch_size=10 ** 3, start=0, end=10000)):
-#    for embi,embt in zip(ei(batch_size=10 ** 6, start=0, end=ei.count),et(batch_size=10 ** 6, start=0, end=et.count)):
-        embi = list(embi)
-        embt = list(embt)
-        print(embi[0].shape,embt[0].shape)
-        if torch.cuda.is_available():
-            embi[0] = torch.tensor(embi[0][:(int(0.8*embi[0].shape[0]))]).cuda()
-            embt[0] = torch.tensor(embt[0][:(int(0.8*embt[0].shape[0]))]).cuda()
-        optimizer.zero_grad()
-        # taking 80% for training - 20% for validation
-        loss = diffusion_prior(text_embed = embt[0],image_embed = embi[0])
-        loss.backward()
-        optimizer.step()
-        print("Training loss = ",loss.item())
-        train_loss+=loss.item()
+def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,device,learning_rate=0.01):
+    # DiffusionPriorNetwork 
+    prior_network = DiffusionPriorNetwork( dim = image_embed_dim, depth = 6, dim_head = 64, heads = 8).to(device)
+    
+    # DiffusionPrior with text embeddings and image embeddings pre-computed
+    diffusion_prior = DiffusionPrior( net = prior_network, clip = None, image_embed_dim = image_embed_dim, 
+                                     timesteps = 100, cond_drop_prob = 0.2, 
+                                     condition_on_text_encodings = False).to(device)
+    # Get image and text embeddings from the servers
+    print("==============Downloading embeddings - image and text====================")
+    ei = EmbeddingReader(embeddings_folder=image_embed_url, file_format="npy")
+    et = EmbeddingReader(embeddings_folder=text_embed_url, file_format="npy")
 
-    print("Validation loop - epoch number ",e)
-    valid_loss = 0.0
-    for embi,embt in zip(ei(batch_size=10 ** 6, start=0, end=ei.count),et(batch_size=10 ** 6, start=0, end=et.count)):
-        embi = list(embi)
-        embt = list(embt)
-        if torch.cuda.is_available():
-            embi[0] = torch.tensor(embi[0][(int(0.8*embi[0].shape[0])):]).cuda()
-            embt[0] = torch.tensor(embt[0][(int(0.8*embt[0].shape[0])):]).cuda()
-        loss = diffusion_prior(text_embed = embt[0],image_embed = embi[0])
-        print("Validation loss = ",loss.item())
-        valid_loss+=loss.item()
-        
-        # this needs to be checked - the denominators - commenting for now
-        # print(f'Epoch {e+1} \t\t Training Loss: { train_loss / 0.8*embi.count} \t\t Validation Loss: { valid_loss / 0.2*embi.count}')
+    ### Training code
+    optimizer = torch.optim.SGD(diffusion_prior.parameters(), lr = 0.01)
+    epochs = 5
+    min_valid_loss = np.inf
+    for e in range(epochs):
+        train_loss = 0.0
+        print("Training loop - epoch number ",e)
+        for embi,embt in zip(ei(batch_size=1batch_size, start=0, end=ei.count),et(batch_size=batch_size, start=0, end=et.count)):
+            embi = list(embi)
+                       embt = list(embt)
+            print(embi[0].shape,embt[0].shape)
+            if torch.cuda.is_available():
+                embi[0] = torch.tensor(embi[0][:(int(0.8*embi[0].shape[0]))]).to(device)
+                embt[0] = torch.tensor(embt[0][:(int(0.8*embt[0].shape[0]))]).to(device)
+            optimizer.zero_grad()
+            # taking 80% for training - 20% for validation
+            loss = diffusion_prior(text_embed = embt[0],image_embed = embi[0])
+            loss.backward()
+            # Log to wandb
+            wandb.log({"Training Loss": loss})
+            optimizer.step()
+            print("Training loss = ",loss.item())
+            train_loss+=loss.item()
 
-    if min_valid_loss > valid_loss:
-        print(f'Validation Loss Decreased({min_valid_loss:.6f\
-        }--->{valid_loss:.6f}) \t Saving The Model')
-        min_valid_loss = valid_loss
+        print("Validation loop - epoch number ",e)
+        valid_loss = 0.0
+        for embi,embt in zip(ei(batch_size=10 ** 6, start=0, end=ei.count),et(batch_size=10 ** 6, start=0, end=et.count)):
+            embi = list(embi)
+            embt = list(embt)
+            if torch.cuda.is_available():
+                embi[0] = torch.tensor(embi[0][(int(0.8*embi[0].shape[0])):]).to(device)
+                embt[0] = torch.tensor(embt[0][(int(0.8*embt[0].shape[0])):]).to(device)
+                
+            loss = diffusion_prior(text_embed = embt[0],image_embed = embi[0])
+            
+            # Log to wandb
+            wandb.log({"Validation Loss ": loss})
+            valid_loss+=loss.item()
 
-        # Saving State Dict
+            # Saving State Dict
         torch.save(model.state_dict(), 'saved_model.pth')
+
+def main():
+    parser = argparse.ArgumentParser()
+    # Logging
+    parser.add_argument("--wandb-entity", type=str, default="laion")
+    parser.add_argument("--wandb-project", type=str, default="diffusion-prior")
+    # URLs for embeddings 
+    parser.add_argument("--image-embed-url", type=str, default="https://mystic.the-eye.eu/public/AI/cah/laion5b/embeddings/laion2B-en/img_emb/")
+    parser.add_argument("--text-embed-url", type=str, default="s3://laion-us-east-1/embeddings/vit-l-14/laion2B-en/text_emb/")
+    # Hyperparameters
+    parser.add_argument("--learning-rate", type=float, default=0.01)
+    parser.add_argument("--batch-size", type=int, default=10**6)
+    # Image embed dimension
+    parser.add_argument("--image-embed-dim", type=int, default=768)
+
+    args = parser.parse_args()
+    wandb.init(
+      entity=args.wandb_entity,
+      project=args.wandb_project,
+      name=f"laion-dprior",
+      config={
+      "learning_rate": args.learning_rate,
+      "architecture": "DiffusionPrior",
+      "dataset": "LAION-5B",
+      "epochs": 10,
+      })
+       # Obtain the utilized device.
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        torch.cuda.set_device(device)
+        has_cuda = True
+    else:
+        device = torch.device("cpu")
+        has_cuda = False
+      # Training loop
+    train(args.image_embed_dim,args.image_embed_url,args.text_embed_url,args.batch_size,device,args.learning_rate)
+
+if __name__ == "__main__":
+  main()
 
 
