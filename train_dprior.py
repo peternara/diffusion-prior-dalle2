@@ -6,24 +6,12 @@ from dalle2_pytorch import DiffusionPriorNetwork
 import numpy as np
 import math
 from tqdm import tqdm
-from inspect import isfunction
-from functools import partial
-from contextlib import contextmanager
-
 import torch
-import torch.nn.functional as F
-from torch import nn, einsum
+from torch import nn
 
-from einops import rearrange, repeat
-from einops.layers.torch import Rearrange
-from einops_exts import rearrange_many, repeat_many, check_shape
-from einops_exts.torch import EinopsToAndFrom
+import wandb
+os.environ["WANDB_SILENT"] = "true"
 
-from kornia.filters import gaussian_blur2d
-
-from tokenizer import tokenizer
-from vqgan_vae import NullVQGanVAE, VQGanVAE
-from attention import QueryAttnUpsample
 import wandb
 os.environ["WANDB_SILENT"] = "true"
 
