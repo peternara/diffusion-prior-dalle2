@@ -1,4 +1,5 @@
 import argparse
+import os
 from dalle2_pytorch import DiffusionPrior
 from embedding_reader import EmbeddingReader
 from dalle2_pytorch import DiffusionPriorNetwork
@@ -24,7 +25,7 @@ from tokenizer import tokenizer
 from vqgan_vae import NullVQGanVAE, VQGanVAE
 from attention import QueryAttnUpsample
 import wandb
-
+os.environ["WANDB_SILENT"] = "true"
 
 def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,device,learning_rate=0.01):
     # DiffusionPriorNetwork 
