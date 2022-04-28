@@ -15,7 +15,7 @@ os.environ["WANDB_SILENT"] = "true"
 import wandb
 os.environ["WANDB_SILENT"] = "true"
 
-def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,device,learning_rate=0.01):
+def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,train_percent,val_percent,device,learning_rate=0.01):
     # DiffusionPriorNetwork 
     prior_network = DiffusionPriorNetwork( dim = image_embed_dim, depth = 6, dim_head = 64, heads = 8).to(device)
     
@@ -35,13 +35,14 @@ def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,device,learn
     for e in range(epochs):
         train_loss = 0.0
         print("Training loop - epoch number ",e)
-        for embi,embt in zip(ei(batch_size=batch_size, start=0, end=ei.count),et(batch_size=batch_size, start=0, end=et.count)):
+        train_set_size = int(train_percent*ei.count)
+        for embi,embt in zip(ei(batch_size=batch_size, start=0, end=train_set_size),et(batch_size=batch_size, start=0, end=train_set_size)):
             embi = list(embi)
-                       embt = list(embt)
+            embt = list(embt)
             print(embi[0].shape,embt[0].shape)
             if torch.cuda.is_available():
-                embi[0] = torch.tensor(embi[0][:(int(0.8*embi[0].shape[0]))]).to(device)
-                embt[0] = torch.tensor(embt[0][:(int(0.8*embt[0].shape[0]))]).to(device)
+                embi[0] = torch.tensor(embi[0]).to(device)
+                embt[0] = torch.tensor(embt[0]).to(device)
             optimizer.zero_grad()
             # taking 80% for training - 20% for validation
             loss = diffusion_prior(text_embed = embt[0],image_embed = embi[0])
@@ -54,13 +55,13 @@ def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,device,learn
 
         print("Validation loop - epoch number ",e)
         valid_loss = 0.0
-        for embi,embt in zip(ei(batch_size=10 ** 6, start=0, end=ei.count),et(batch_size=10 ** 6, start=0, end=et.count)):
+        val_set_size = int(val_percent*ei.count)
+        for embi,embt in zip(ei(batch_size=10 ** 6, start=ei.count-train_set_size, end=ei.count),et(batch_size=10 ** 6, start=ei.count-train_set_size, end=et.count)):
             embi = list(embi)
             embt = list(embt)
             if torch.cuda.is_available():
-                embi[0] = torch.tensor(embi[0][(int(0.8*embi[0].shape[0])):]).to(device)
-                embt[0] = torch.tensor(embt[0][(int(0.8*embt[0].shape[0])):]).to(device)
-                
+                embi[0] = torch.tensor(embi[0])
+                embt[0] = torch.tensor(embt[0])    
             loss = diffusion_prior(text_embed = embt[0],image_embed = embi[0])
             
             # Log to wandb
@@ -83,6 +84,10 @@ def main():
     parser.add_argument("--batch-size", type=int, default=10**6)
     # Image embed dimension
     parser.add_argument("--image-embed-dim", type=int, default=768)
+    # Train-val split
+    parser.add_argument("--train-percent", type=float, default=0.8)
+    parser.add_argument("--val-percent", type=float, default=0.2)
+
 
     args = parser.parse_args()
     print("Setting up wandb logging... Please wait...")
@@ -106,7 +111,7 @@ def main():
         device = torch.device("cpu")
         has_cuda = False
       # Training loop
-    train(args.image_embed_dim,args.image_embed_url,args.text_embed_url,args.batch_size,device,args.learning_rate)
+    train(args.image_embed_dim,args.image_embed_url,args.text_embed_url,args.batch_size,args.train_percent,args.val_percent,device,args.learning_rate)
 
 if __name__ == "__main__":
   main()
