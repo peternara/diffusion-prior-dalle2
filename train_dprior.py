@@ -35,7 +35,6 @@ def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,device,learn
     diffusion_prior = DiffusionPrior( net = prior_network, clip = None, image_embed_dim = image_embed_dim, 
                                      timesteps = 100, cond_drop_prob = 0.2, 
                                      condition_on_text_encodings = False).to(device)
-    diffusion_prior = nn.DataParallel(diffusion_prior) # this trains on all avilable GPUs in parallel
     # Get image and text embeddings from the servers
     print("==============Downloading embeddings - image and text====================")
     ei = EmbeddingReader(embeddings_folder=image_embed_url, file_format="npy")
