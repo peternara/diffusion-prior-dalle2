@@ -47,7 +47,7 @@ def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,device,learn
     for e in range(epochs):
         train_loss = 0.0
         print("Training loop - epoch number ",e)
-        for embi,embt in zip(ei(batch_size=1batch_size, start=0, end=ei.count),et(batch_size=batch_size, start=0, end=et.count)):
+        for embi,embt in zip(ei(batch_size=batch_size, start=0, end=ei.count),et(batch_size=batch_size, start=0, end=et.count)):
             embi = list(embi)
                        embt = list(embt)
             print(embi[0].shape,embt[0].shape)
