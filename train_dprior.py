@@ -35,6 +35,7 @@ def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,device,learn
     diffusion_prior = DiffusionPrior( net = prior_network, clip = None, image_embed_dim = image_embed_dim, 
                                      timesteps = 100, cond_drop_prob = 0.2, 
                                      condition_on_text_encodings = False).to(device)
+    diffusion_prior = nn.DataParallel(diffusion_prior) # this trains on all avilable GPUs in parallel
     # Get image and text embeddings from the servers
     print("==============Downloading embeddings - image and text====================")
     ei = EmbeddingReader(embeddings_folder=image_embed_url, file_format="npy")
@@ -97,6 +98,7 @@ def main():
     parser.add_argument("--image-embed-dim", type=int, default=768)
 
     args = parser.parse_args()
+    print("Setting up wandb logging... Please wait...")
     wandb.init(
       entity=args.wandb_entity,
       project=args.wandb_project,
@@ -107,6 +109,7 @@ def main():
       "dataset": "LAION-5B",
       "epochs": 10,
       })
+    print("wandb logging setup done!")
        # Obtain the utilized device.
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
