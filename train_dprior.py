@@ -56,7 +56,7 @@ def train(image_embed_dim,image_embed_url,text_embed_url,batch_size,train_percen
         print("Validation loop - epoch number ",e)
         valid_loss = 0.0
         val_set_size = int(val_percent*ei.count)
-        for embi,embt in zip(ei(batch_size=10 ** 6, start=ei.count-train_set_size, end=ei.count),et(batch_size=10 ** 6, start=ei.count-train_set_size, end=et.count)):
+        for embi,embt in zip(ei(batch_size=batch_size, start=ei.count-train_set_size, end=ei.count),et(batch_size=batch_size, start=ei.count-train_set_size, end=et.count)):
             embi = list(embi)
             embt = list(embt)
             if torch.cuda.is_available():
